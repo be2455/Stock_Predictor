@@ -2,6 +2,7 @@ import os
 import pandas as pd
 
 from features.volume_features import add_volume_features
+from features.technical_indicators import add_technical_indicators
 
 INPUT_DIR  = 'data/raw'
 OUTPUT_DIR = 'data/processed'
@@ -25,6 +26,7 @@ for filename in os.listdir(INPUT_DIR):
 
     # ==== START: Processing ====
     df = add_volume_features(df)
+    df = add_technical_indicators(df)
     # ==== END: Processing ======
 
     df.to_csv(output_path, index=False)
