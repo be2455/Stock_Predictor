@@ -1,5 +1,12 @@
 stock_env/
 
+data/.env
+
 data/labels/
 data/processed/
 data/raw/
+data/log/
+data/dataset
+
+__pycache__/
+*.pyc
