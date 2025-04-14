@@ -18,7 +18,9 @@ def add_price_features(df: pd.DataFrame) -> pd.DataFrame:
 
         # Calculate rolling volatility (standard deviation of daily returns) over different periods
         # This reflects price fluctuation or risk level in the given time window
-        Price_Features[f"Price_volatility_{period}d"] = Close.pct_change().rolling(window=period).std()
+        # Skip 1d volatility
+        if period > 1:
+            Price_Features[f"Price_volatility_{period}d"] = Close.pct_change().rolling(window=period).std()
 
         # Generate price-volume quadrant features over multiple time windows
         price_change  = f'price_change_{period}d'
