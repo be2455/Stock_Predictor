@@ -6,6 +6,7 @@ data/labels/
 data/processed/
 data/raw/
 data/log/
+data/chart_data/
 data/dataset
 
 __pycache__/
