@@ -29,38 +29,40 @@ def compute_targets(
     return df
 
 
-def evaluate_baselines(df: pd.DataFrame, horizon: int = 10) -> None:
+def evaluate_baselines_multi_horizon(df: pd.DataFrame, horizons: list[int] = [3, 5, 10, 20]) -> None:
     """
-    Evaluate baseline models for both regression (return prediction) and
-    classification (RISE/FALL prediction) tasks.
+    Evaluate baseline models for multiple horizons (both regression and classification tasks)
 
     Args:
-        df (pd.DataFrame): Data table, should contain stock price data (at least 'Close' column)
-        horizon (int): The time horizon for the forecast (in the next few days), default is 10.
-    
+        df (pd.DataFrame): The stock price data (must include 'Close' column)
+        horizons (list[int]): A list of horizons to evaluate (in days)
+
     Returns:
-        None: This function prints the MSE (regression) and Accuracy (classification) for each baseline.
+        None: Print baseline MSE and Accuracy for each horizon
     """
-    compute_targets(df, horizon=horizon)
+    for horizon in horizons:
+        print(f"\n=== Horizon: {horizon} days ===")
 
-    return_col = f'return_{horizon}d'
-    label_col = f'label_{horizon}d_up'
+        df = compute_targets(df, horizon=horizon)
 
-    print("=== Regression Task: Reward Rate Prediction ===")
-    return_preds = baseline_return(df)
-    for name, pred in return_preds.items():
-        # Excluding NaN data
-        mask = ~df[return_col].isna() & ~pd.Series(pred).isna()
-        mse = mean_squared_error(df.loc[mask, return_col], pd.Series(pred)[mask])
-        print(f"{name}: MSE = {mse:.6f}")
+        return_col = f'return_{horizon}d'
+        label_col = f'label_{horizon}d_up'
 
-    print("\n=== Classification Task: RISE/FALL prediction ===")
-    direction_preds = baseline_direction(df)
-    for name, pred in direction_preds.items():
-        # Excluding NaN data
-        mask = ~df[label_col].isna() & ~pd.Series(pred).isna()
-        acc = accuracy_score(df.loc[mask, label_col], pd.Series(pred)[mask])
-        print(f"{name}: Accuracy = {acc:.4f}")
+        # === Regression baseline ===
+        print("→ Regression (Return Prediction)")
+        return_preds = baseline_return(df)
+        for name, pred in return_preds.items():
+            mask = ~df[return_col].isna() & ~pd.Series(pred).isna()
+            mse = mean_squared_error(df.loc[mask, return_col], pd.Series(pred)[mask])
+            print(f"   {name:>12}: MSE = {mse:.6f}")
+
+        # === Classification baseline ===
+        print("→ Classification (RISE/FALL Prediction)")
+        direction_preds = baseline_direction(df)
+        for name, pred in direction_preds.items():
+            mask = ~df[label_col].isna() & ~pd.Series(pred).isna()
+            acc = accuracy_score(df.loc[mask, label_col], pd.Series(pred)[mask])
+            print(f"   {name:>12}: Accuracy = {acc:.4f}")
 
 
 if __name__ == "__main__":
@@ -74,4 +76,4 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"File not found: {file_path}")
 
     df = pd.read_parquet(file_path)
-    evaluate_baselines(df)
+    evaluate_baselines_multi_horizon(df, horizons=[3, 5, 10, 20])
