@@ -1,9 +1,16 @@
 import pandas as pd
 import argparse
 import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import BASELINE_RESULT_DIR, PROCESSED_DIR
 from classification_baseline import baseline_direction
 from regression_baseline import baseline_return
 from sklearn.metrics import mean_squared_error, accuracy_score
+
+os.makedirs(BASELINE_RESULT_DIR, exist_ok=True)
 
 def compute_targets(
         df: pd.DataFrame,
@@ -29,7 +36,7 @@ def compute_targets(
     return df
 
 
-def evaluate_baselines_multi_horizon(df: pd.DataFrame, horizons: list[int] = [3, 5, 10, 20]) -> None:
+def evaluate_baselines_multi_horizon(df: pd.DataFrame, horizons: list[int] = [3, 5, 10, 20]) -> pd.DataFrame:
     """
     Evaluate baseline models for multiple horizons (both regression and classification tasks)
 
@@ -38,8 +45,10 @@ def evaluate_baselines_multi_horizon(df: pd.DataFrame, horizons: list[int] = [3,
         horizons (list[int]): A list of horizons to evaluate (in days)
 
     Returns:
-        None: Print baseline MSE and Accuracy for each horizon
+        pd.DataFrame: A DataFrame with residuals, columns like '3d_modelA', '5d_modelB', etc.
     """
+    all_residuals = {}
+
     for horizon in horizons:
         print(f"\n=== Horizon: {horizon} days ===")
 
@@ -52,9 +61,15 @@ def evaluate_baselines_multi_horizon(df: pd.DataFrame, horizons: list[int] = [3,
         print("→ Regression (Return Prediction)")
         return_preds = baseline_return(df)
         for name, pred in return_preds.items():
+            pred_series = pd.Series(pred, index=df.index)
             mask = ~df[return_col].isna() & ~pd.Series(pred).isna()
+            residuals = df.loc[mask, return_col] - pred_series[mask]
+
             mse = mean_squared_error(df.loc[mask, return_col], pd.Series(pred)[mask])
             print(f"   {name:>12}: MSE = {mse:.6f}")
+
+            col_name = f"{horizon}d_{name}"
+            all_residuals[col_name] = residuals
 
         # === Classification baseline ===
         print("→ Classification (RISE/FALL Prediction)")
@@ -64,16 +79,22 @@ def evaluate_baselines_multi_horizon(df: pd.DataFrame, horizons: list[int] = [3,
             acc = accuracy_score(df.loc[mask, label_col], pd.Series(pred)[mask])
             print(f"   {name:>12}: Accuracy = {acc:.4f}")
 
+    residuals_df = pd.DataFrame(all_residuals)
+    return residuals_df
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("stock_id", help="Stock Symbol")
     args = parser.parse_args()
 
-    file_path = f"data/processed/{args.stock_id}.parquet"
+    filename    = f"{args.stock_id}.parquet"
+    input_path  = os.path.join(PROCESSED_DIR, filename)
+    output_path = os.path.join(BASELINE_RESULT_DIR, filename)
 
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"File not found: {input_path}")
 
-    df = pd.read_parquet(file_path)
-    evaluate_baselines_multi_horizon(df, horizons=[3, 5, 10, 20])
+    df = pd.read_parquet(input_path)
+    residuals_df = evaluate_baselines_multi_horizon(df, horizons=[3, 5, 10, 20])
+    residuals_df.to_parquet(output_path)

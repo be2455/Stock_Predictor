@@ -7,6 +7,7 @@ data/processed/
 data/raw/
 data/log/
 data/chart_data/
+data/baselines_evaluation_results
 data/dataset
 
 __pycache__/
