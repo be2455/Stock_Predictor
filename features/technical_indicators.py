@@ -18,14 +18,6 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     sma_windows = [5, 10, 20, 60]
     for window in sma_windows:
-        # ----- SMA simple moving average -----
-        sma = ta.trend.SMAIndicator(close=Close, n=window, fillna=True).sma_indicator()
-        df[f'SMA_{window}'] = sma
-        df[f'SMA_ratio_{window}'] = Close / sma
-        df[f'SMA_slope_{window}'] = sma - sma.shift(1)
-        df[f'SMA_slope_{window}_avg_3'] = df[f'SMA_slope_{window}'].rolling(3).mean()
-        df[f'SMA_slope_{window}_avg_5'] = df[f'SMA_slope_{window}'].rolling(5).mean()
-
         # ----- EMA exponential moving average -----
         df[f'EMA_{window}'] = ta.trend.EMAIndicator(close=Close, n=window, fillna=True).ema_indicator()
 
