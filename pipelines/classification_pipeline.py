@@ -9,7 +9,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.base import ClassifierMixin
 
-
 def build_classification_pipeline(
     X: pd.DataFrame,
     *,
@@ -77,3 +76,30 @@ def build_classification_pipeline(
     )
 
     return cls_pipeline
+
+# -----------------------------------------------------------------------------
+# Neural-Net pipeline
+# -----------------------------------------------------------------------------
+from models.torch_estimators import TorchClassifier
+from config import NN_ESTIMATOR_PARAMS
+
+def build_nn_pipeline(X: pd.DataFrame) -> Pipeline:
+        
+    cat_features = X.select_dtypes(include=['object', 'category']).columns.tolist()
+
+    num_features: List[str] = (
+        X.select_dtypes(include=['float64', 'int64']).columns.difference(cat_features).tolist()
+    )
+
+    preprocessor = ColumnTransformer([
+        ('num', Pipeline([
+            ('impute', SimpleImputer(strategy='median')),
+            ('scale', StandardScaler())
+        ]), num_features),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_features)
+    ])
+
+    return Pipeline([
+        ('preprocessor', preprocessor),
+        ('classifier', TorchClassifier(**NN_ESTIMATOR_PARAMS))
+    ])

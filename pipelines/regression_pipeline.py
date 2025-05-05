@@ -50,3 +50,30 @@ def build_regression_pipeline(
         ))
     ])
     return reg_pipeline
+
+# -----------------------------------------------------------------------------
+# Neural-Net pipeline
+# -----------------------------------------------------------------------------
+from models.torch_estimators import TorchRegressor
+from config import NN_ESTIMATOR_PARAMS
+
+def build_nn_pipeline(X: pd.DataFrame) -> Pipeline:
+
+    cat_features = X.select_dtypes(include=['object', 'category']).columns.tolist()
+
+    num_features: List[str] = (
+        X.select_dtypes(include=['float64', 'int64']).columns.difference(cat_features).tolist()
+    )
+
+    preprocessor = ColumnTransformer([
+        ('num', Pipeline([
+            ('impute', SimpleImputer(strategy='median')),
+            ('scale', StandardScaler())
+        ]), num_features),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_features)
+    ])
+
+    return Pipeline([
+        ('preprocessor', preprocessor),
+        ('regressor', TorchRegressor(**NN_ESTIMATOR_PARAMS))
+    ])
