@@ -9,9 +9,8 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from typing import List
-
 import pandas as pd
+from typing import List
 
 # === Project‑level imports ====================================================
 
@@ -19,31 +18,41 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import PROCESSED_DIR
 from data.fetch_stock_data import run_fetch
 from data.feature_engineer import feature_engineer
-from pipelines.regression_pipeline import build_regression_pipeline
-from pipelines.classification_pipeline import build_classification_pipeline
 from train_utils import *
 
 # -----------------------------------------------------------------------------
 # MAIN (multi‑horizon version)
 # -----------------------------------------------------------------------------
-
-def main():
+def main() -> None:
     """End-to-end workflow for **multi-horizon** training / evaluation."""
 
     # Data acquisition & feature engineering
     run_fetch()
     feature_engineer()
 
-    # CLI arg: stock symbol ------------------------------------------------
-    parser = argparse.ArgumentParser(description="Train/evaluate multi-horizon models")
+    # ---------------- CLI ----------------
+    parser = argparse.ArgumentParser(description="Train/evaluate multi-horizon stock models")
     parser.add_argument("stock_id", help="Stock Symbol (e.g. 2330)")
     parser.add_argument("--horizons", "-H", type=int, nargs="*", default=[5, 10, 20, 60],
                         help="Forecast horizons in days (default: 5 10 20 60)")
+    parser.add_argument("--model", choices=["gbdt", "nn"], default="gbdt",
+                        help="'gbdt' = HistGradientBoosting, 'nn' = PyTorch neural net")
     args = parser.parse_args()
 
-    filename    = f"{args.stock_id}.parquet"
-    input_path  = os.path.join(PROCESSED_DIR, filename)
+    # ---- dynamic import *after* args are known ----
+    if args.model == "nn":
+        from pipelines.regression_pipeline import build_nn_pipeline \
+            as build_regression_pipeline
+        from pipelines.classification_pipeline import build_nn_pipeline \
+            as build_classification_pipeline
+        print("⚙️  Using Neural-Net pipelines")
+    else:
+        from pipelines.regression_pipeline import build_regression_pipeline
+        from pipelines.classification_pipeline import build_classification_pipeline
+        print("⚙️  Using Gradient-Boosting pipelines")
 
+    # ---------- Load engineered data ----------
+    input_path = os.path.join(PROCESSED_DIR, f"{args.stock_id}.parquet")
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"File not found: {input_path}")
 
@@ -56,9 +65,27 @@ def main():
     ]
     feature_cols: List[str] = sorted(set(df.columns) - set(raw_cols))
 
-    # Iterate over horizons ----------------------------------------------
+    # ——————— Convert price–volume quadrant features to categorical ———————
+    for period in [5, 10, 20, 60]:
+        columns_to_convert = [
+            f'price_up_volume_up_{period}d',
+            f'price_up_volume_down_{period}d',
+            f'price_down_volume_up_{period}d',
+            f'price_down_volume_down_{period}d',
+            f'price_volume_quadrant_{period}d'
+        ]
+
+        for column in columns_to_convert:
+            df[column] = df[column].astype('category')
+
+    # ——————— Convert technical-indicator cross signals to categorical ———————
+    df['RSI_cross'] = df['RSI_cross'].astype('category')
+    df['macd_cross_signal'] = df['macd_cross_signal'].astype('category')
+    df['MACD_cross_zero'] = df['MACD_cross_zero'].astype('category')
+
+    # ---------- Iterate horizons ----------
     for horizon in args.horizons:
-        print(f"\n================  Horizon  {horizon}-day  ================")
+        print(f"\n================  Horizon {horizon}-day  ================")
 
         # Create horizon‑specific targets
         Y = add_return_and_target(df["Close"], horizon=horizon)
