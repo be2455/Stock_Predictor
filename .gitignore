@@ -6,6 +6,7 @@ data/labels/
 data/processed/
 data/raw/
 data/log/
+data/chips/
 data/chart_data/
 data/baselines_evaluation_results
 data/dataset
