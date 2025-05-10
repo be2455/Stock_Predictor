@@ -224,6 +224,28 @@ def download_institution_for_list(download_dir: str) -> None:
             if dfs:
                 new_df = pd.concat([old_df] + dfs, ignore_index=True).drop_duplicates(subset=["資料日期"])
                 os.makedirs(MARGIN_DIR, exist_ok=True)
+
+                # Define a set of columns to exclude from numeric conversion
+                exclude = {"代號", "名稱", "資料日期"}
+
+                # Build a list of all columns whose dtype is object (strings)
+                # but not in the exclude set—these are the columns to convert
+                to_numeric_cols = [
+                    c for c, dt in new_df.dtypes.items()
+                    if dt == "object" and c not in exclude
+                ]
+
+                # For each column identified, 
+                #   1. cast values to string (in case they are mixed types)
+                #   2. remove any thousands‑separator commas
+                #   3. convert the result to numeric, coercing invalid parses to NaN
+                for c in to_numeric_cols:
+                    new_df[c] = (
+                        new_df[c].astype(str)
+                                .str.replace(",", "", regex=False)
+                                .pipe(pd.to_numeric, errors="coerce")
+                    )
+
                 new_df.to_parquet(out_path, index=False)
                 logger.info("→ saved %s", out_path)
             else:
