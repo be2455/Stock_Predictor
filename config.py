@@ -10,6 +10,7 @@ PROCESSED_DIR   = os.path.join(DATA_DIR, 'processed')
 LOG_DIR         = os.path.join(DATA_DIR, 'log')
 CHIPS_DIR       = os.path.join(DATA_DIR, 'chips')
 MARGIN_DIR      = os.path.join(CHIPS_DIR, 'margin')
+INSTITUTION_DIR = os.path.join(CHIPS_DIR, 'institution')
 CHART_DATA_DIR  = os.path.join(DATA_DIR, 'chart_data')
 
 # Create a folder path for baseline assessment results
