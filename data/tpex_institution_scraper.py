@@ -31,7 +31,7 @@ from typing import List
 # Project‑level paths
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config import CHIPS_DIR, MARGIN_DIR, STOCK_TPEX_LIST_PATH
+from config import CHIPS_DIR, INSTITUTION_DIR, STOCK_TPEX_LIST_PATH
 
 # -----------------------------------------------------------------------------
 # LOGGER SETUP (one logger per stock symbol)
@@ -42,7 +42,7 @@ LOG_DIR = os.path.join(CHIPS_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 def get_stock_logger(stock_id: str) -> logging.Logger:  # noqa: D401
-    """Return a dedicated *per‑stock* logger.
+    """Return a dedicated *per-stock* logger.
 
     The logger writes to ``<stock_id>_institution.log`` under ``LOG_DIR`` and
     simultaneously echoes to *stdout*.
@@ -172,7 +172,7 @@ def download_institution_for_list(download_dir: str) -> None:
         stock_list: List[List[str]] = [line.strip().split("#")[0].split(",") for line in f]
 
     for stock_id, start_date in stock_list:
-        logger = get_stock_logger(f"{stock_id}_institution")
+        logger = get_stock_logger(f"{stock_id}")
         logger.info(f"Start fetching institutional detail for {stock_id} …")
 
         # ---- compute crawl start -----------------------------------------
@@ -180,7 +180,7 @@ def download_institution_for_list(download_dir: str) -> None:
         start = datetime(int(y), int(m), int(d)).date()
         start = max(start, date(2007, 4, 20))   # TPEx earliest
 
-        out_path = os.path.join(MARGIN_DIR, f"{stock_id}_institution.parquet")
+        out_path = os.path.join(INSTITUTION_DIR, f"{stock_id}.parquet")
         old_df = pd.read_parquet(out_path) if os.path.exists(out_path) else pd.DataFrame()
 
         current = pd.Timestamp(start)
@@ -223,7 +223,7 @@ def download_institution_for_list(download_dir: str) -> None:
         finally:
             if dfs:
                 new_df = pd.concat([old_df] + dfs, ignore_index=True).drop_duplicates(subset=["資料日期"])
-                os.makedirs(MARGIN_DIR, exist_ok=True)
+                os.makedirs(INSTITUTION_DIR, exist_ok=True)
 
                 # Define a set of columns to exclude from numeric conversion
                 exclude = {"代號", "名稱", "資料日期"}
@@ -247,9 +247,9 @@ def download_institution_for_list(download_dir: str) -> None:
                     )
 
                 new_df.to_parquet(out_path, index=False)
-                logger.info("→ saved %s", out_path)
+                logger.info(f"→  Saved to {out_path}")
             else:
-                logger.warning("no new data")
+                logger.warning("(No new data to write)")
 
 # ---------------------------------------------------------------------------
 # CLI entry‑point
