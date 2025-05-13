@@ -2,14 +2,14 @@ import pandas as pd
 
 def add_volume_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    - Volume Moving Average (5,10,20)
+    - Volume Moving Average (5,10,20,60)
     - Volume ratio (trading volume / average volume)
     - Volume fluctuation (standard deviation)
     """
 
     Volume = df['Volume']
 
-    vol_windows = [5, 10, 20]
+    vol_windows = [5, 10, 20, 60]
     for window in vol_windows:
         vol_ma = Volume.rolling(window=window).mean()
 

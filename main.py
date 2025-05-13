@@ -10,25 +10,34 @@ import argparse
 import os
 import sys
 import pandas as pd
-from typing import List
+from typing import List, Optional
 
 # === Project‑level imports ====================================================
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import PROCESSED_DIR
-from data.fetch_stock_data import run_fetch
-from data.feature_engineer import feature_engineer
+from config import PROCESSED_DIR, STOCK_LIST_PATH
+from data.fetch_stock_data import fetch_stock
+from data.feature_engineer import feature_engineer_single
 from train_utils import *
+
+# ──────────────────── utilities ────────────────────
+def get_start_date(stock_id: str, list_path: str = STOCK_LIST_PATH) -> Optional[str]:
+    """Return the start-date string in stock_list.txt for given stock_id."""
+    with open(list_path, "r", encoding="utf-8") as f:
+        for line in f:
+            core = line.split("#")[0].strip()
+            if not core:
+                continue
+            sid, start = map(str.strip, core.split(","))
+            if sid == stock_id:
+                return start
+    return None
 
 # -----------------------------------------------------------------------------
 # MAIN (multi‑horizon version)
 # -----------------------------------------------------------------------------
 def main() -> None:
     """End-to-end workflow for **multi-horizon** training / evaluation."""
-
-    # Data acquisition & feature engineering
-    run_fetch()
-    feature_engineer()
 
     # ---------------- CLI ----------------
     parser = argparse.ArgumentParser(description="Train/evaluate multi-horizon stock models")
@@ -38,6 +47,16 @@ def main() -> None:
     parser.add_argument("--model", choices=["gbdt", "nn"], default="gbdt",
                         help="'gbdt' = HistGradientBoosting, 'nn' = PyTorch neural net")
     args = parser.parse_args()
+
+    # --------------- Data acquisition  & feature engineering -------------
+    start_date = get_start_date(args.stock_id)
+    if start_date is None:
+        # logger.warning("Stock %s not found in %s", args.stock_id, STOCK_LIST_PATH)
+        sys.exit(f"[Error] {args.stock_id} not found in {STOCK_LIST_PATH}")
+
+    print(f"📥  Fetching {args.stock_id} starting {start_date} ...")
+    fetch_stock(args.stock_id, start_date)
+    feature_engineer_single(args.stock_id)
 
     # ---- dynamic import *after* args are known ----
     if args.model == "nn":
