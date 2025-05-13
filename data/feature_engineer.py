@@ -101,58 +101,5 @@ def feature_engineer():
         stock_id, _ = os.path.splitext(filename)
         feature_engineer_single(stock_id)
 
-
-
-# ---------------------------------------------------------------------
-# Single‑stock processing
-# ---------------------------------------------------------------------
-def process_single_stock(stock_id: str) -> None:
-    """Feature-engineer just one stock (e.g. stock_id='2330')."""
-    raw_path = Path(RAW_DIR) / f"{stock_id}.parquet"
-    margin_path = Path(MARGIN_DIR) / f"{stock_id}.parquet"
-    if not raw_path.exists():
-        logger.error("Raw file %s not found.", raw_path)
-        raise FileNotFoundError(raw_path)
-    if not margin_path.exists():
-        logger.error("Margin file %s not found.", margin_path)
-        raise FileNotFoundError(margin_path)
-
-    df = pd.read_parquet(raw_path)
-    if not _validate_columns(df, raw_path.name):
-        return
-    
-    df_margin = pd.read_parquet(margin_path)
-    df_margin = df_margin.rename(columns={'資料日期': 'date'})
-
-    df_margin['date'] = pd.to_datetime(df_margin['date'])
-    df['date'] = pd.to_datetime(df['date'])
-    df = df.merge(df_margin, on='date', how='left')
-
-    df = _run_pipeline(df)
-
-    # Output to processed and chart_data
-    processed_path = Path(PROCESSED_DIR) / f"{stock_id}.parquet"
-    processed_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(processed_path, index=False)
-
-    chart_path = Path(CHART_DATA_DIR) / f"{stock_id}.csv"
-    chart_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(chart_path, index=False)
-
-    logger.info("Finished feature engineering for %s", stock_id)
-
-# ---------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------
-def _parse_args():
-    parser = argparse.ArgumentParser(description="Feature engineering pipeline")
-    parser.add_argument("--stock", help="Specify a single stock code (eg: 2330)")
-    return parser.parse_args()
-
 if __name__ == "__main__":
-
-    args = _parse_args()
-    if args.stock:
-        process_single_stock(args.stock)
-    else:
-        feature_engineer()
+    feature_engineer()
