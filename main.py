@@ -58,6 +58,12 @@ def main() -> None:
 
     df = pd.read_parquet(input_path)
 
+    # time period characteristics ----------------------------------------
+    Date = pd.to_datetime(df['date'])
+    df['DayOfWeek'] = Date.dt.dayofweek      # 0=Mon
+    df['Month']     = Date.dt.month
+    df['IsHolidayEve'] = (Date.shift(-1) - Date).dt.days > 3  # 簡單版 IsHolidayEve：若下一個交易日間隔超過3天視為長週末
+
     # Feature / raw column split -----------------------------------------
     raw_cols = [
         'date', 'stock_id', 'Volume', 'Trading_money', 
@@ -82,6 +88,15 @@ def main() -> None:
     df['RSI_cross'] = df['RSI_cross'].astype('category')
     df['macd_cross_signal'] = df['macd_cross_signal'].astype('category')
     df['MACD_cross_zero'] = df['MACD_cross_zero'].astype('category')
+
+    # ------- Convert time period to categorical -------------------
+    df['DayOfWeek'] = df['DayOfWeek'].astype('category')
+    df['Month'] = df['Month'].astype('category')
+    df['IsHolidayEve'] = df['IsHolidayEve'].astype('category')
+
+    # TODO:
+    # df['Margin Balance Δ Sign'] = np.sign(df['Margin Balance (shares) Δ'])
+    # df['Short Balance Δ Sign'] = np.sign(df['Short Balance (shares) Δ'])
 
     # ---------- Iterate horizons ----------
     for horizon in args.horizons:

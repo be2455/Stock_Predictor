@@ -12,9 +12,11 @@ def add_volume_features(df: pd.DataFrame) -> pd.DataFrame:
     vol_windows = [5, 10, 20]
     for window in vol_windows:
         vol_ma = Volume.rolling(window=window).mean()
+        vol_std = Volume.rolling(window=window).std()
 
-        df[f'Vol_ma_{window}'] = vol_ma               # Moving Average
-        df[f'Vol_ratio_{window}'] = Volume / vol_ma   # Volume ratio
-        df[f'Vol_std_{window}'] = Volume.rolling(window=window).std()  # Volume volatility (standard deviation of volume)
+        df[f'Vol MA {window}D'] = vol_ma               # Moving Average
+        df[f'Vol Ratio {window}D'] = Volume / vol_ma   # Volume ratio
+        df[f'Vol STD {window}D'] = vol_std  # Volume volatility (standard deviation of volume)
+        df[f'Vol Z{window}'] = (Volume - vol_ma) / vol_std
 
     return df
