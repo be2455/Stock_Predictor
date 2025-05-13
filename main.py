@@ -15,22 +15,27 @@ from typing import List, Optional
 # === Project‑level imports ====================================================
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import PROCESSED_DIR, STOCK_LIST_PATH
+from config import PROCESSED_DIR, STOCK_LIST_PATH, STOCK_TPEX_LIST_PATH
 from data.fetch_stock_data import fetch_stock
 from data.feature_engineer import feature_engineer_single
 from train_utils import *
 
 # ──────────────────── utilities ────────────────────
-def get_start_date(stock_id: str, list_path: str = STOCK_LIST_PATH) -> Optional[str]:
+def get_start_date(stock_id: str) -> Optional[str]:
     """Return the start-date string in stock_list.txt for given stock_id."""
-    with open(list_path, "r", encoding="utf-8") as f:
-        for line in f:
-            core = line.split("#")[0].strip()
-            if not core:
-                continue
-            sid, start = map(str.strip, core.split(","))
-            if sid == stock_id:
-                return start
+    for list_path in (STOCK_LIST_PATH, STOCK_TPEX_LIST_PATH):
+        if not os.path.exists(list_path):
+            # The file does not exist at all, skip to the next one
+            continue
+
+        with open(list_path, "r", encoding="utf-8") as f:
+            for line in f:
+                core = line.split("#")[0].strip()
+                if not core:
+                    continue
+                sid, start = map(str.strip, core.split(","))
+                if sid == stock_id:
+                    return start
     return None
 
 # -----------------------------------------------------------------------------
@@ -52,7 +57,9 @@ def main() -> None:
     start_date = get_start_date(args.stock_id)
     if start_date is None:
         # logger.warning("Stock %s not found in %s", args.stock_id, STOCK_LIST_PATH)
-        sys.exit(f"[Error] {args.stock_id} not found in {STOCK_LIST_PATH}")
+        sys.exit(f"[Error] {args.stock_id} not found in either\n"
+                 f"  • {STOCK_LIST_PATH}\n"
+                 f"  • {STOCK_TPEX_LIST_PATH}")
 
     print(f"📥  Fetching {args.stock_id} starting {start_date} ...")
     fetch_stock(args.stock_id, start_date)
