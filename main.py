@@ -113,6 +113,10 @@ def main() -> None:
     df['Month'] = df['Month'].astype('category')
     df['IsHolidayEve'] = df['IsHolidayEve'].astype('category')
 
+    # TODO:
+    # df['Margin Balance Δ Sign'] = np.sign(df['Margin Balance (shares) Δ'])
+    # df['Short Balance Δ Sign'] = np.sign(df['Short Balance (shares) Δ'])
+
     # ---------- Iterate horizons ----------
     for horizon in args.horizons:
         print(f"\n================  Horizon {horizon}-day  ================")

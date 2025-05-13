@@ -13,11 +13,11 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config import RAW_DIR, PROCESSED_DIR, LOG_DIR, CHART_DATA_DIR
+from config import RAW_DIR, PROCESSED_DIR, LOG_DIR, CHART_DATA_DIR, MARGIN_DIR
 from features.volume_features import add_volume_features
 from features.technical_indicators import add_technical_indicators
 from features.price_features import add_price_features
+from features.margin_features import add_margin_features
 
 # ---------------------------------------------------------------------
 # Ensure required directories exist
@@ -109,13 +109,24 @@ def feature_engineer():
 def process_single_stock(stock_id: str) -> None:
     """Feature-engineer just one stock (e.g. stock_id='2330')."""
     raw_path = Path(RAW_DIR) / f"{stock_id}.parquet"
+    margin_path = Path(MARGIN_DIR) / f"{stock_id}.parquet"
     if not raw_path.exists():
         logger.error("Raw file %s not found.", raw_path)
         raise FileNotFoundError(raw_path)
-    
+    if not margin_path.exists():
+        logger.error("Margin file %s not found.", margin_path)
+        raise FileNotFoundError(margin_path)
+
     df = pd.read_parquet(raw_path)
     if not _validate_columns(df, raw_path.name):
         return
+    
+    df_margin = pd.read_parquet(margin_path)
+    df_margin = df_margin.rename(columns={'資料日期': 'date'})
+
+    df_margin['date'] = pd.to_datetime(df_margin['date'])
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.merge(df_margin, on='date', how='left')
 
     df = _run_pipeline(df)
 
@@ -139,6 +150,7 @@ def _parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
+
     args = _parse_args()
     if args.stock:
         process_single_stock(args.stock)
